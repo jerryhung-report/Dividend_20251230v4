@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Line, ComposedChart } from 'recharts';
-import { Settings, Shield, Wallet, TrendingUp, RefreshCcw, Info, Sparkles, ExternalLink, Calendar, History, ChevronRight, Activity, Plus, Check, AlertCircle, ArrowRight, CreditCard, Gift, ShieldAlert, ListChecks, LayoutGrid, Layers, MousePointer2, PieChart as PieIcon, ChevronDown, ChevronUp, Power, Search, Edit2 } from 'lucide-react';
+import { Settings, Shield, Wallet, TrendingUp, RefreshCcw, Info, Sparkles, ExternalLink, Calendar, History, ChevronRight, Activity, Plus, Check, AlertCircle, ArrowRight, CreditCard, Gift, ShieldAlert, ListChecks, LayoutGrid, Layers, MousePointer2, PieChart as PieIcon, ChevronDown, ChevronUp, Power, Search, Edit2, Box } from 'lucide-react';
 import { InvestmentState, SimulationData, Fund } from '../types';
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4'];
@@ -14,21 +14,30 @@ const AVAILABLE_FUNDS: Fund[] = [
   { id: '6', name: '亞太股票領航基金', weight: 0, nav: 9.5, change: -1.5 },
 ];
 
+// 定義 5 個預設組合
+const FUND_GROUPS = [
+  { id: 'g1', name: '核心收息組合', description: '穩定市場回報，適合初階投資者', funds: ['1', '2', '3'] },
+  { id: 'g2', name: '成長增益組合', description: '強化新興市場配置，追求長期增長', funds: ['4', '5', '3'] },
+  { id: 'g3', name: '亞太區域組合', description: '聚焦亞洲經濟動能與穩健債券', funds: ['6', '2', '3'] },
+  { id: 'g4', name: '防禦優先組合', description: '使用高評級標的，抗波動性極佳', funds: ['1', '5', '3'] },
+  { id: 'g5', name: '平衡收益組合', description: '多樣化資產配置，兼顧風險與報酬', funds: ['4', '2', '3'] },
+];
+
 const PERIODS = [
   { label: '1年', value: 12 },
   { label: '2年', value: 24 },
   { label: '3年', value: 36 },
+  { label: '4年', value: 48 },
+  { label: '5年', value: 60 },
 ];
 
 /**
  * Helper to calculate optimal weights based on redemption rate (1% ~ 10%)
- * Higher rate = More stock, Lower rate = More bond
+ * Updated: Weights now step by 10% increments
  */
 const getOptimalWeights = (rate: number) => {
-  // Linear interpolation:
-  // Rate 1: Stock 20, Bond 70, PM 10
-  // Rate 10: Stock 80, Bond 10, PM 10
-  const stock = Math.round(20 + (rate - 1) * (60 / 9));
+  const rawStock = 20 + (rate - 1) * (60 / 9);
+  const stock = Math.round(rawStock / 10) * 10;
   const pm = 10;
   const bond = 100 - stock - pm;
   return { stock, bond, pm };
@@ -37,7 +46,7 @@ const getOptimalWeights = (rate: number) => {
 const MOCK_PORTFOLIOS: InvestmentState[] = [
   {
     id: 'p1',
-    name: '我的核心收息組合',
+    name: '核心收息組合',
     initialPrincipal: 1000000,
     currentPrincipal: 1050000,
     redemptionRate: 3,
@@ -46,14 +55,14 @@ const MOCK_PORTFOLIOS: InvestmentState[] = [
     isManualPause: false,
     totalWithdrawn: 120000,
     funds: [
-      { id: '1', name: '全球股票指數型基金', weight: 33, nav: 10.5, change: 1.2 },
-      { id: '2', name: '全債券總報酬基金', weight: 57, nav: 12.1, change: -0.1 },
+      { id: '1', name: '全球股票指數型基金', weight: 30, nav: 10.5, change: 1.2 },
+      { id: '2', name: '全債券總報酬基金', weight: 60, nav: 12.1, change: -0.1 },
       { id: '3', name: '實體貴金屬避險基金', weight: 10, nav: 8.8, change: 0.5 }
     ]
   },
   {
     id: 'p2',
-    name: '保守型債券機器',
+    name: '保守型債券計畫',
     initialPrincipal: 500000,
     currentPrincipal: 480000,
     redemptionRate: 1,
@@ -66,22 +75,6 @@ const MOCK_PORTFOLIOS: InvestmentState[] = [
       { id: '2', name: '全債券總報酬基金', weight: 70, nav: 12.1, change: -0.1 },
       { id: '3', name: '實體貴金屬避險基金', weight: 10, nav: 8.8, change: 0.5 }
     ]
-  },
-  {
-    id: 'p3',
-    name: '積極成長配息組',
-    initialPrincipal: 2000000,
-    currentPrincipal: 1400000, 
-    redemptionRate: 10,
-    redemptionDay: 20,
-    isSafetyOn: true,
-    isManualPause: true,
-    totalWithdrawn: 300000,
-    funds: [
-      { id: '1', name: '全球股票指數型基金', weight: 80, nav: 10.5, change: 1.2 },
-      { id: '2', name: '全債券總報酬基金', weight: 10, nav: 12.1, change: -0.1 },
-      { id: '3', name: '實體貴金屬避險基金', weight: 10, nav: 8.8, change: 0.5 }
-    ]
   }
 ];
 
@@ -92,9 +85,9 @@ const CustomTooltip = ({ active, payload, label }: any) => {
       <div className="bg-white/95 backdrop-blur-sm p-4 border border-slate-200 shadow-xl rounded-2xl min-w-[220px] animate-in fade-in zoom-in-95 duration-200">
         <div className="flex items-center gap-2 mb-3 pb-2 border-b border-slate-100">
           <Calendar size={14} className="text-indigo-500" />
-          <span className="font-bold text-slate-700">第 {label} 個月</span>
+          <span className="font-bold text-slate-700 text-sm">第 {label} 個月</span>
           {data.isPaused && (
-            <span className="ml-auto px-2 py-0.5 bg-red-100 text-red-600 text-[10px] font-bold rounded-full">暫停贖回</span>
+            <span className="ml-auto px-2 py-0.5 bg-red-100 text-red-600 text-xs font-bold rounded-full">暫停贖回</span>
           )}
         </div>
         <div className="space-y-2">
@@ -137,18 +130,22 @@ const Dashboard: React.FC = () => {
   const [historyExpanded, setHistoryExpanded] = useState(false);
   const [showSubModal, setShowSubModal] = useState(false);
   const [subStep, setSubStep] = useState(1);
-  const [selectedFundIds, setSelectedFundIds] = useState<string[]>(['1', '2', '3']);
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [subAmount, setSubAmount] = useState(1000000);
+  const [subRedemptionRate, setSubRedemptionRate] = useState(3);
   const [subRedemptionDay, setSubRedemptionDay] = useState(15);
   const [orderNo, setOrderNo] = useState('');
 
-  // 當前日期 YYYY/MM/DD
+  // 當前選擇組合的基金 IDs
+  const selectedFundIds = useMemo(() => {
+    return FUND_GROUPS.find(g => g.id === selectedGroupId)?.funds || [];
+  }, [selectedGroupId]);
+
   const todayStr = useMemo(() => {
     const d = new Date();
     return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
   }, []);
 
-  // 計算模擬日期
   const getSimDate = (monthOffset: number, day: number) => {
     const date = new Date();
     date.setMonth(date.getMonth() + monthOffset);
@@ -264,7 +261,6 @@ const Dashboard: React.FC = () => {
 
   const handleConfirmChanges = () => {
     setIsRefreshing(true);
-    // Final sync and visual confirmation
     setActivePortfolios(prev => prev.map(p => p.id === config.id ? { ...config } : p));
     setTimeout(() => {
       setIsRefreshing(false);
@@ -275,7 +271,6 @@ const Dashboard: React.FC = () => {
   const updateConfigWeights = (rate: number) => {
     const { stock, bond, pm } = getOptimalWeights(rate);
     const updatedFunds = [...config.funds];
-    // Assuming funds order is Stock, Bond, PM
     if (updatedFunds[0]) updatedFunds[0].weight = stock;
     if (updatedFunds[1]) updatedFunds[1].weight = bond;
     if (updatedFunds[2]) updatedFunds[2].weight = pm;
@@ -285,9 +280,10 @@ const Dashboard: React.FC = () => {
   };
 
   const handleConfirmSubscription = () => {
-    const { stock, bond, pm } = getOptimalWeights(3); // Default rate 3%
+    const { stock, bond, pm } = getOptimalWeights(subRedemptionRate);
     const weights = [stock, bond, pm];
     
+    const selectedGroup = FUND_GROUPS.find(g => g.id === selectedGroupId);
     const selectedFunds = AVAILABLE_FUNDS.filter(f => selectedFundIds.includes(f.id)).map((f, i) => ({
       ...f,
       weight: weights[i] || 0
@@ -295,10 +291,10 @@ const Dashboard: React.FC = () => {
 
     const newPortfolio: InvestmentState = {
       id: `p-${Date.now()}`,
-      name: '新申購計畫',
+      name: selectedGroup?.name || '我的計畫',
       initialPrincipal: subAmount,
       currentPrincipal: subAmount,
-      redemptionRate: 3,
+      redemptionRate: subRedemptionRate,
       redemptionDay: subRedemptionDay,
       isSafetyOn: true,
       isManualPause: false,
@@ -309,7 +305,7 @@ const Dashboard: React.FC = () => {
     const randomOrderNo = `ORD-${new Date().toISOString().split('T')[0].replace(/-/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
     setOrderNo(randomOrderNo);
 
-    setActivePortfolios([newPortfolio]);
+    setActivePortfolios([...activePortfolios, newPortfolio]);
     setConfig(newPortfolio);
     setSelectedPortfolioId(newPortfolio.id);
     setScenario(1);
@@ -321,16 +317,16 @@ const Dashboard: React.FC = () => {
       <div className="w-24 h-24 bg-indigo-50 text-indigo-600 rounded-[32px] flex items-center justify-center mb-8 shadow-xl shadow-indigo-100">
         <Layers size={48} strokeWidth={1.5} />
       </div>
-      <h2 className="text-3xl font-black text-slate-800 mb-4 tracking-tight">開始您的「月月配息」製造計畫</h2>
-      <p className="text-slate-500 max-w-lg mb-10 leading-relaxed font-medium">
+      <h2 className="text-2xl font-black text-slate-800 mb-4 tracking-tight">開始您的「月月配息」製造計畫</h2>
+      <p className="text-sm text-slate-500 max-w-lg mb-10 leading-relaxed font-medium">
         您尚未擁有任何配息製造機計畫。申購後，系統將根據您設定的比例每月自動為您提領現金流。
       </p>
       <button 
-        onClick={() => { setShowSubModal(true); setSubStep(1); }}
-        className="group relative flex items-center gap-3 bg-slate-900 text-white px-10 py-5 rounded-[24px] font-bold shadow-2xl shadow-slate-200 transition-all hover:scale-105 active:scale-95"
+        onClick={() => { setShowSubModal(true); setSubStep(1); setSelectedGroupId(''); }}
+        className="group relative flex items-center gap-3 bg-slate-900 text-white px-10 py-4 rounded-[24px] text-sm font-bold shadow-2xl shadow-slate-200 transition-all hover:scale-105 active:scale-95"
       >
-        <Plus size={20} />
-        啟動首個計畫
+        <Plus size={18} />
+        啟動計畫
       </button>
     </div>
   );
@@ -340,12 +336,12 @@ const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white p-8 rounded-[32px] shadow-sm border border-slate-100 flex flex-col justify-between h-40">
            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">總計畫本金</span>
-           <div className="text-4xl font-black text-slate-800">NT$ {totalAggStats.initial.toLocaleString()}</div>
+           <div className="text-2xl font-black text-slate-800">NT$ {totalAggStats.initial.toLocaleString()}</div>
            <div className="text-xs font-bold text-slate-400">目前共 {activePortfolios.length} 組計畫</div>
         </div>
         <div className="bg-indigo-600 p-8 rounded-[32px] shadow-xl shadow-indigo-100 flex flex-col justify-between h-40 text-white">
            <span className="text-xs font-bold text-white/60 uppercase tracking-widest">總資產現值</span>
-           <div className="text-4xl font-black">NT$ {totalAggStats.current.toLocaleString()}</div>
+           <div className="text-2xl font-black">NT$ {totalAggStats.current.toLocaleString()}</div>
            <div className="flex items-center gap-1.5 text-xs font-bold">
               <TrendingUp size={14} />
               預估次月配息領回：NT$ {Math.round(totalAggStats.monthly).toLocaleString()}
@@ -353,7 +349,7 @@ const Dashboard: React.FC = () => {
         </div>
         <div className="bg-emerald-500 p-8 rounded-[32px] shadow-xl shadow-emerald-100 flex flex-col justify-between h-40 text-white">
            <span className="text-xs font-bold text-white/60 uppercase tracking-widest">資產健康度</span>
-           <div className="text-4xl font-black">92%</div>
+           <div className="text-2xl font-black">92%</div>
            <div className="text-xs font-bold opacity-80">市場狀況：中立偏多</div>
         </div>
       </div>
@@ -361,7 +357,7 @@ const Dashboard: React.FC = () => {
       <div className="bg-white p-8 rounded-[32px] shadow-sm border border-slate-100">
         <div className="flex items-center gap-2 mb-8">
           <PieIcon size={20} className="text-indigo-600" />
-          <h3 className="text-xl font-bold text-slate-800">多組合彙總資產配置</h3>
+          <h3 className="text-lg font-bold text-slate-800">多組合彙總資產配置</h3>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div className="h-[280px]">
@@ -408,9 +404,9 @@ const Dashboard: React.FC = () => {
       </div>
 
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-xl font-bold text-slate-800">計畫清單</h3>
+        <h3 className="text-lg font-bold text-slate-800">計畫清單</h3>
         <button 
-          onClick={() => { setShowSubModal(true); setSubStep(1); }}
+          onClick={() => { setShowSubModal(true); setSubStep(1); setSelectedGroupId(''); }}
           className="text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors flex items-center gap-1"
         >
           <Plus size={16} /> 增加計畫
@@ -431,11 +427,11 @@ const Dashboard: React.FC = () => {
                   <Wallet size={24} />
                 </div>
                 {isPTriggered ? (
-                  <span className="px-2 py-1 bg-red-100 text-red-600 text-[10px] font-black rounded-lg flex items-center gap-1">
+                  <span className="px-2 py-1 bg-red-100 text-red-600 text-xs font-black rounded-lg flex items-center gap-1">
                     <ShieldAlert size={10} /> 暫停中
                   </span>
                 ) : (
-                  <span className="px-2 py-1 bg-emerald-100 text-emerald-600 text-[10px] font-black rounded-lg flex items-center gap-1">
+                  <span className="px-2 py-1 bg-emerald-100 text-emerald-600 text-xs font-black rounded-lg flex items-center gap-1">
                     <Check size={10} /> 運行中
                   </span>
                 )}
@@ -477,8 +473,8 @@ const Dashboard: React.FC = () => {
         <div className="flex bg-slate-800 p-1 rounded-xl">
            {[
              { label: '場景 1：尚未申購', val: 0, icon: <Activity size={14} /> },
-             { label: '場景 2：單一組合', val: 1, icon: <Wallet size={14} /> },
-             { label: '場景 3：多組合總覽', val: 3, icon: <Layers size={14} /> }
+             { label: '場景 2：多組合總覽', val: 3, icon: <Layers size={14} /> },
+             { label: '場景 3：單一組合', val: 1, icon: <Wallet size={14} /> }
            ].map(s => (
              <button
                key={s.val}
@@ -513,11 +509,11 @@ const Dashboard: React.FC = () => {
                   <p className="text-sm text-slate-400 font-medium">即時調整參數觀測資產變化</p>
                 </div>
                 <button 
-                  onClick={() => { setShowSubModal(true); setSubStep(1); }}
-                  className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-2xl font-bold shadow-lg shadow-indigo-100 transition-all hover:scale-105 active:scale-95"
+                  onClick={() => { setShowSubModal(true); setSubStep(1); setSelectedGroupId(''); }}
+                  className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-2xl text-sm font-bold shadow-lg shadow-indigo-100 transition-all hover:scale-105 active:scale-95"
                 >
                   <Plus size={18} />
-                  新申購計畫
+                  啟動計畫
                 </button>
               </div>
 
@@ -526,7 +522,7 @@ const Dashboard: React.FC = () => {
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                   <div className="flex items-center gap-3 text-slate-500 mb-2">
                     <Wallet size={18} />
-                    <span className="text-sm font-medium">投入本金</span>
+                    <span className="text-xs font-bold uppercase tracking-wider">投入本金</span>
                   </div>
                   <div className="text-2xl font-bold">NT$ {config.initialPrincipal.toLocaleString()}</div>
                 </div>
@@ -535,7 +531,7 @@ const Dashboard: React.FC = () => {
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3 text-slate-500">
                       <Activity size={18} />
-                      <span className="text-sm font-medium">總績效表現</span>
+                      <span className="text-xs font-bold uppercase tracking-wider">總績效表現</span>
                     </div>
                     <span className={`text-xs font-black px-2 py-0.5 rounded-lg ${currentPerf >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
                       {currentPerf >= 0 ? '+' : ''}{currentPerf.toFixed(2)}%
@@ -548,7 +544,7 @@ const Dashboard: React.FC = () => {
                 <div className={`p-6 rounded-2xl shadow-sm border transition-colors duration-300 ${isProtectionTriggered ? 'bg-red-50 border-red-100' : 'bg-white border-slate-100'}`}>
                   <div className="flex items-center gap-3 text-slate-500 mb-2">
                     <RefreshCcw size={18} />
-                    <span className="text-sm font-medium">預計每月領回</span>
+                    <span className="text-xs font-bold uppercase tracking-wider">預計每月領回</span>
                   </div>
                   <div className={`text-2xl font-bold ${isProtectionTriggered ? 'text-red-500 flex items-center gap-2' : 'text-indigo-600'}`}>
                     {isProtectionTriggered ? (
@@ -564,7 +560,7 @@ const Dashboard: React.FC = () => {
                 <div className={`p-6 rounded-2xl shadow-sm border transition-colors duration-300 ${config.isManualPause ? 'bg-slate-50 border-slate-200' : 'bg-white border-slate-100'}`}>
                   <div className={`flex items-center gap-3 mb-2 ${config.isManualPause ? 'text-slate-400' : 'text-slate-500'}`}>
                     <Shield size={18} />
-                    <span className="text-sm font-medium">本金保護機制</span>
+                    <span className="text-xs font-bold uppercase tracking-wider">本金保護機制</span>
                   </div>
                   <div className={`text-2xl font-bold ${config.isManualPause ? 'text-slate-400' : 'text-indigo-600'}`}>
                     {config.isManualPause ? '機制手動關閉' : '機制運作中'}
@@ -577,11 +573,10 @@ const Dashboard: React.FC = () => {
                 <div className="bg-white p-8 rounded-[32px] shadow-sm border border-slate-100">
                   <div className="flex items-center gap-2 mb-8">
                     <Layers size={20} className="text-indigo-600" />
-                    <h3 className="text-xl font-bold text-slate-800">標的分佈明細</h3>
+                    <h3 className="text-lg font-bold text-slate-800">標的分佈明細</h3>
                   </div>
                   <div className="space-y-4">
                     {config.funds.map((fund, index) => {
-                      const absChange = (fund.nav * fund.change / 100).toFixed(2);
                       const sign = fund.change >= 0 ? '+' : '';
                       return (
                         <div key={fund.id} className="group flex items-center justify-between p-4 bg-white hover:bg-slate-50 border-2 border-slate-50 hover:border-indigo-100 rounded-2xl transition-all duration-300">
@@ -599,16 +594,16 @@ const Dashboard: React.FC = () => {
                               </a>
                               <div className="flex items-center gap-2 mt-1">
                                 <span className="text-xs font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">占比 {fund.weight}%</span>
-                                <span className="text-xs font-bold text-slate-400">最新淨值 {fund.nav}（{todayStr}）</span>
+                                <span className="text-xs font-bold text-slate-400">最新淨值 {fund.nav}</span>
                               </div>
                             </div>
                           </div>
                           <div className="text-right">
-                            <div className="text-base font-black text-slate-800">
+                            <div className="text-sm font-black text-slate-800">
                               NT$ {(config.initialPrincipal * (fund.weight / 100)).toLocaleString()}
                             </div>
-                            <div className={`text-[10px] font-black ${fund.change >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                              {sign}{fund.change}% {sign}{absChange}
+                            <div className={`text-xs font-black ${fund.change >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                              {sign}{fund.change}%
                             </div>
                           </div>
                         </div>
@@ -620,7 +615,7 @@ const Dashboard: React.FC = () => {
                 <div className="bg-white p-8 rounded-[32px] shadow-sm border border-slate-100 flex flex-col items-center justify-center">
                   <div className="flex items-center gap-2 mb-6 w-full">
                     <PieIcon size={20} className="text-indigo-600" />
-                    <h3 className="text-xl font-bold text-slate-800">投資組合比例分配</h3>
+                    <h3 className="text-lg font-bold text-slate-800">投資組合比例分配</h3>
                   </div>
                   <div className="h-[250px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
@@ -650,14 +645,13 @@ const Dashboard: React.FC = () => {
                      {config.funds.map((f, i) => (
                        <div key={f.id} className="flex items-center gap-2">
                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                         <span className="text-[10px] font-bold text-slate-500 truncate">{f.name}</span>
+                         <span className="text-xs font-bold text-slate-500 truncate">{f.name}</span>
                        </div>
                      ))}
                   </div>
                 </div>
               </div>
 
-              {/* Main Visualization & History Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                 <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
@@ -710,14 +704,14 @@ const Dashboard: React.FC = () => {
                      {historyData.items.map((item, idx) => (
                        <div key={idx} className={`p-3 rounded-xl border transition-all ${item.isPaused ? 'bg-red-50/50 border-red-100' : 'bg-slate-50 border-slate-100'}`}>
                           <div className="flex justify-between items-start mb-1">
-                             <div className="flex items-center gap-2">
-                                <span className="text-xs font-black text-slate-600">{getSimDate(item.month, config.redemptionDay)}</span>
+                             <div className="flex items-center gap-2 text-xs font-black text-slate-600">
+                                {getSimDate(item.month, config.redemptionDay)}
                              </div>
-                             {item.isPaused ? <span className="text-[10px] font-black bg-red-100 text-red-600 px-1.5 py-0.5 rounded-lg">暫停</span> : <span className="text-[10px] font-black bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded-lg">已領</span>}
+                             {item.isPaused ? <span className="text-xs font-black bg-red-100 text-red-600 px-1.5 py-0.5 rounded-lg">暫停</span> : <span className="text-xs font-black bg-emerald-100 text-emerald-600 px-1.5 py-0.5 rounded-lg">已領</span>}
                           </div>
-                          <div className="flex justify-between items-center">
-                             <span className="text-[11px] font-medium text-slate-400">贖回金額</span>
-                             <span className={`text-sm font-black ${item.isPaused ? 'text-slate-300 line-through' : 'text-indigo-600'}`}>NT$ {item.monthlyWithdrawn.toLocaleString()}</span>
+                          <div className="flex justify-between items-center text-sm">
+                             <span className="text-slate-400 font-medium">贖回金額</span>
+                             <span className={`font-black ${item.isPaused ? 'text-slate-300 line-through' : 'text-indigo-600'}`}>NT$ {item.monthlyWithdrawn.toLocaleString()}</span>
                           </div>
                        </div>
                      ))}
@@ -737,7 +731,6 @@ const Dashboard: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Investment Allocation & Changes */}
                 <div className="lg:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col gap-6 relative overflow-hidden h-full">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
@@ -760,10 +753,9 @@ const Dashboard: React.FC = () => {
                           onChange={(e) => {
                             const nextName = e.target.value;
                             setConfig(prev => ({ ...prev, name: nextName }));
-                            // Real-time sync for "linked" behavior
                             setActivePortfolios(prev => prev.map(p => p.id === config.id ? { ...config, name: nextName } : p));
                           }}
-                          className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 rounded-xl font-bold text-slate-800 transition-all outline-none" 
+                          className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 rounded-xl font-bold text-slate-800 text-sm transition-all outline-none" 
                         />
                       </div>
                     </div>
@@ -773,10 +765,10 @@ const Dashboard: React.FC = () => {
                         <label className="text-sm font-bold text-slate-600">本金基準 (當前申購)</label>
                       </div>
                       <div className="relative group">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                          <span className="text-sm font-bold">NT$</span>
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-xs">
+                          <span className="font-bold ml-1">NT$</span>
                         </div>
-                        <input type="number" disabled value={config.initialPrincipal} className="w-full pl-12 pr-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl font-bold text-slate-500" />
+                        <input type="number" disabled value={config.initialPrincipal} className="w-full pl-12 pr-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl font-bold text-slate-500 text-sm" />
                       </div>
                     </div>
                     
@@ -784,7 +776,7 @@ const Dashboard: React.FC = () => {
                       <div>
                         <div className="flex justify-between mb-2">
                           <label className="text-sm font-bold text-slate-600">每月自動贖回比例</label>
-                          <span className={`text-sm font-black px-2 py-0.5 rounded-lg ${isProtectionTriggered ? 'bg-red-50 text-red-500' : 'bg-indigo-50 text-indigo-600'}`}>{config.redemptionRate}%</span>
+                          <span className={`text-xs font-black px-2 py-0.5 rounded-lg ${isProtectionTriggered ? 'bg-red-50 text-red-500' : 'bg-indigo-50 text-indigo-600'}`}>{config.redemptionRate}%</span>
                         </div>
                         <input type="range" min="1" max="10" step="1" value={config.redemptionRate} onChange={(e) => {
                           const nextRate = Number(e.target.value);
@@ -792,28 +784,27 @@ const Dashboard: React.FC = () => {
                         }} className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-indigo-600 bg-slate-200" />
                       </div>
                       <div>
-                        <div className="flex justify-between mb-2">
-                          <label className="text-sm font-bold text-slate-600">指定贖回日期</label>
+                        <div className="flex justify-between mb-2 text-sm font-bold text-slate-600">
+                          <label>指定贖回日期</label>
                         </div>
                         <select value={config.redemptionDay} onChange={(e) => {
                           const nextDay = Number(e.target.value);
                           setConfig(prev => ({ ...prev, redemptionDay: nextDay }));
                           setActivePortfolios(prev => prev.map(p => p.id === config.id ? { ...config, redemptionDay: nextDay } : p));
-                        }} className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold appearance-none cursor-pointer">
+                        }} className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm appearance-none cursor-pointer">
                           {Array.from({length: 31}, (_, i) => i + 1).map(day => (<option key={day} value={day}>每月 {day} 日執行</option>))}
                         </select>
                       </div>
                     </div>
 
-                    {/* EMERGENCY PAUSE TOGGLE SECTION */}
                     <div className={`p-5 rounded-[32px] border-2 transition-all duration-500 ${isBelow80 || config.isManualPause ? 'bg-red-50 border-red-100 shadow-xl shadow-red-100/20' : 'bg-slate-50 border-slate-100'}`}>
                        <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-3">
-                             <div className={`p-2.5 rounded-2xl transition-all duration-500 ${isBelow80 || config.isManualPause ? 'bg-red-600 text-white animate-pulse' : 'bg-slate-200 text-slate-400'}`}>
+                             <div className={`p-2 rounded-2xl transition-all duration-500 ${isBelow80 || config.isManualPause ? 'bg-red-600 text-white animate-pulse' : 'bg-slate-200 text-slate-400'}`}>
                                 <Power size={20} strokeWidth={2.5} />
                              </div>
                              <div>
-                                <span className={`text-[10px] font-black uppercase tracking-widest block mb-0.5 ${isBelow80 || config.isManualPause ? 'text-red-500' : 'text-slate-400'}`}>
+                                <span className={`text-xs font-black uppercase tracking-widest block mb-0.5 ${isBelow80 || config.isManualPause ? 'text-red-500' : 'text-slate-400'}`}>
                                   {config.isManualPause ? '已開啟暫停' : '自動運作中'}
                                 </span>
                                 <h4 className={`text-sm font-black tracking-tight ${isBelow80 || config.isManualPause ? 'text-red-800' : 'text-slate-700'}`}>本金保護機制</h4>
@@ -831,13 +822,13 @@ const Dashboard: React.FC = () => {
                             >
                               <span className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-300 ease-in-out ${config.isManualPause ? 'translate-x-6' : 'translate-x-0'}`} />
                             </button>
-                            <span className={`text-[9px] font-black ${config.isManualPause ? 'text-red-600' : 'text-slate-400'}`}>
+                            <span className={`text-xs font-black ${config.isManualPause ? 'text-red-600' : 'text-slate-400'}`}>
                               {config.isManualPause ? '已開啟' : '已關閉'}
                             </span>
                           </div>
                        </div>
                        
-                       <div className={`p-4 rounded-2xl text-[11px] font-bold transition-all duration-500 ${isBelow80 || config.isManualPause ? 'bg-white/80 text-red-600 border border-red-100' : 'bg-white/50 text-slate-400 border border-slate-200/50'}`}>
+                       <div className={`p-4 rounded-2xl text-xs font-bold transition-all duration-500 ${isBelow80 || config.isManualPause ? 'bg-white/80 text-red-600 border border-red-100' : 'bg-white/50 text-slate-400 border border-slate-200/50'}`}>
                           {isBelow80 
                             ? "資產跌破 80% 本金保護位，建議暫停贖回以避免在低位變現損害長期複利。" 
                             : config.isManualPause 
@@ -849,7 +840,7 @@ const Dashboard: React.FC = () => {
                     <div className="pt-4 mt-auto border-t border-slate-100">
                       <button 
                         onClick={handleConfirmChanges}
-                        className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold shadow-xl shadow-slate-100 hover:bg-black transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                        className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold shadow-xl shadow-slate-100 hover:bg-black transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-sm"
                       >
                         <Check size={18} />
                         確認變更
@@ -873,11 +864,11 @@ const Dashboard: React.FC = () => {
               <h4 className="text-2xl font-black text-slate-800 mb-2">委託交易成功</h4>
               <p className="text-sm text-slate-400 mb-8 leading-relaxed">
                 您的投資配置變更已受理。<br/>
-                系統將於次一贖回日 (每月 {config.redemptionDay} 日) 依據新參數執行。
+                系統將於次一贖回日依據新參數執行。
               </p>
               <button 
                 onClick={() => setShowConfirmSuccess(false)} 
-                className="w-full py-3 bg-slate-900 text-white rounded-2xl font-bold shadow-lg hover:bg-black transition-all"
+                className="w-full py-3 bg-slate-900 text-white rounded-2xl font-bold shadow-lg hover:bg-black transition-all text-sm"
               >
                 我知道了
               </button>
@@ -895,7 +886,7 @@ const Dashboard: React.FC = () => {
                   <CreditCard size={20} />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-800">新申購計畫 (3檔組合)</h3>
+                  <h3 className="text-lg font-bold text-slate-800">新申購計畫 (組合選擇)</h3>
                   <div className="flex items-center gap-2 mt-0.5">
                     {[1, 2, 3, 4].map(step => (
                       <div key={step} className={`h-1.5 rounded-full transition-all duration-300 ${subStep >= step ? (subStep === step ? 'w-8 bg-indigo-600' : 'w-4 bg-indigo-400') : 'w-4 bg-slate-200'}`} />
@@ -908,20 +899,38 @@ const Dashboard: React.FC = () => {
             <div className="flex-1 overflow-y-auto p-8">
               {subStep === 1 && (
                 <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
-                  <h4 className="text-lg font-bold text-slate-800">選擇 3 檔基金 (股票、債券、貴金屬類別)</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {AVAILABLE_FUNDS.map((fund, i) => (
+                  <h4 className="text-lg font-bold text-slate-800">選擇一組配息組合</h4>
+                  <p className="text-xs text-slate-400 font-medium -mt-4">每組均包含 股票型、債券型、貴金屬類別基金</p>
+                  <div className="space-y-4">
+                    {FUND_GROUPS.map((group, i) => (
                       <div 
-                        key={fund.id}
-                        onClick={() => setSelectedFundIds(prev => prev.includes(fund.id) ? prev.filter(id => id !== fund.id) : (prev.length < 3 ? [...prev, fund.id] : prev))}
-                        className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between group ${selectedFundIds.includes(fund.id) ? 'border-indigo-600 bg-indigo-50/30' : 'border-slate-100 bg-white hover:border-slate-200'}`}
+                        key={group.id}
+                        onClick={() => setSelectedGroupId(group.id)}
+                        className={`p-5 rounded-3xl border-2 transition-all cursor-pointer flex items-center justify-between group ${selectedGroupId === group.id ? 'border-indigo-600 bg-indigo-50/30' : 'border-slate-100 bg-white hover:border-slate-200'}`}
                       >
-                        <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${selectedFundIds.includes(fund.id) ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
-                            {selectedFundIds.includes(fund.id) ? <Check size={16} /> : i + 1}
+                        <div className="flex items-center gap-4 flex-1">
+                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors shrink-0 ${selectedGroupId === group.id ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                            {selectedGroupId === group.id ? <Check size={24} /> : <Box size={24} />}
                           </div>
-                          <div>
-                            <p className="text-sm font-bold text-slate-700">{fund.name}</p>
+                          <div className="flex-1">
+                            <p className="text-sm font-black text-slate-800">{group.name}</p>
+                            <p className="text-xs text-slate-400 mt-0.5 font-bold">{group.description}</p>
+                            <div className="flex flex-wrap gap-2 mt-3">
+                               {group.funds.map(fid => {
+                                 const f = AVAILABLE_FUNDS.find(fund => fund.id === fid);
+                                 if (!f) return null;
+                                 const colorClass = f.name.includes('股票') 
+                                   ? 'bg-indigo-50 text-indigo-600 border-indigo-200' 
+                                   : f.name.includes('債券') 
+                                     ? 'bg-emerald-50 text-emerald-600 border-emerald-200' 
+                                     : 'bg-amber-50 text-amber-600 border-amber-200';
+                                 return (
+                                   <span key={fid} className={`text-xs font-black border px-2.5 py-1.5 rounded-xl shadow-sm transition-transform group-hover:scale-105 ${colorClass}`}>
+                                     {f.name.replace('型基金', '').replace('基金', '')}
+                                   </span>
+                                 )
+                               })}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -933,7 +942,7 @@ const Dashboard: React.FC = () => {
                 <div className="space-y-8 animate-in fade-in slide-in-from-right-4">
                   <div className="flex justify-between items-end">
                     <h4 className="text-lg font-bold text-slate-800">設定申購金額與執行日</h4>
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">限額 NT$20萬 - 500萬</span>
+                    <span className="text-xs font-black text-slate-400 uppercase tracking-widest">限額 NT$20萬 - 500萬</span>
                   </div>
                   <div className="space-y-6">
                     <div className="relative group">
@@ -960,13 +969,29 @@ const Dashboard: React.FC = () => {
                       </p>
                     )}
 
+                    <div className="space-y-4 pt-4 border-t border-slate-100">
+                      <div className="flex justify-between items-center px-1">
+                        <label className="text-sm font-bold text-slate-600">每月自動贖回比例</label>
+                        <span className="text-xs font-black bg-red-50 text-red-500 px-3 py-1 rounded-full">{subRedemptionRate}%</span>
+                      </div>
+                      <input 
+                        type="range" 
+                        min="1" 
+                        max="10" 
+                        step="1" 
+                        value={subRedemptionRate} 
+                        onChange={(e) => setSubRedemptionRate(Number(e.target.value))} 
+                        className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-indigo-600 bg-slate-200" 
+                      />
+                    </div>
+
                     <div className="space-y-2 pt-2">
                        <label className="text-sm font-bold text-slate-600 ml-2">每月指定贖回執行日</label>
                        <div className="relative">
                          <select 
                            value={subRedemptionDay} 
                            onChange={(e) => setSubRedemptionDay(Number(e.target.value))}
-                           className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-100 rounded-[20px] font-bold text-slate-800 focus:border-indigo-600 focus:outline-none appearance-none cursor-pointer"
+                           className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-100 rounded-[20px] font-bold text-slate-800 text-sm focus:border-indigo-600 focus:outline-none appearance-none cursor-pointer"
                          >
                             {Array.from({length: 31}, (_, i) => i + 1).map(day => (<option key={day} value={day}>每月 {day} 日執行</option>))}
                          </select>
@@ -980,19 +1005,45 @@ const Dashboard: React.FC = () => {
               )}
               {subStep === 3 && (
                 <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
-                  <h4 className="text-xl font-black text-slate-800 text-center">最後確認委託詳情</h4>
+                  <h4 className="text-lg font-black text-slate-800 text-center">最後確認委託詳情</h4>
                   <div className="bg-slate-50 rounded-[24px] p-6 space-y-4 border border-slate-100">
-                    <div className="flex justify-between items-center py-2 border-b border-slate-200/60">
-                      <span className="text-sm text-slate-500 font-medium">申購總額</span>
-                      <span className="text-lg font-black text-slate-800">NT$ {subAmount.toLocaleString()}</span>
+                    <div className="flex justify-between items-center py-2 border-b border-slate-200/60 text-sm">
+                      <span className="text-slate-500 font-medium">申購總額</span>
+                      <span className="font-black text-slate-800">NT$ {subAmount.toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between items-center py-2 border-b border-slate-200/60">
-                      <span className="text-sm text-slate-500 font-medium">指定執行日</span>
-                      <span className="text-base font-bold text-slate-700">每月 {subRedemptionDay} 日</span>
+                    <div className="flex justify-between items-center py-2 border-b border-slate-200/60 text-sm">
+                      <span className="text-slate-500 font-medium">自動贖回比例</span>
+                      <span className="font-bold text-indigo-600">{subRedemptionRate}%</span>
                     </div>
-                    <div className="flex justify-between items-center py-2">
-                      <span className="text-sm text-slate-500 font-medium">預估首月配息</span>
-                      <span className="text-base font-bold text-indigo-600">NT$ {Math.round(subAmount * 0.03).toLocaleString()}</span>
+                    
+                    <div className="py-2 border-b border-slate-200/60">
+                      <p className="text-sm text-slate-500 font-medium mb-3">基金配置比例</p>
+                      <div className="space-y-2">
+                        {(() => {
+                          const { stock, bond, pm } = getOptimalWeights(subRedemptionRate);
+                          const weights = [stock, bond, pm];
+                          const currentGroup = FUND_GROUPS.find(g => g.id === selectedGroupId);
+                          const selectedFunds = AVAILABLE_FUNDS.filter(f => currentGroup?.funds.includes(f.id));
+                          return selectedFunds.map((fund, i) => (
+                            <div key={fund.id} className="flex justify-between items-center text-xs">
+                              <span className="text-slate-600 flex items-center gap-2 font-black">
+                                <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                                {fund.name}
+                              </span>
+                              <span className="font-black text-slate-800">{weights[i]}% NT$ {(subAmount * weights[i] / 100).toLocaleString()}</span>
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center py-2 border-b border-slate-200/60 text-sm">
+                      <span className="text-slate-500 font-medium">指定執行日</span>
+                      <span className="font-bold text-slate-700">每月 {subRedemptionDay} 日</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 text-sm">
+                      <span className="text-slate-500 font-medium">預估首月配息</span>
+                      <span className="font-bold text-indigo-600">NT$ {Math.round(subAmount * (subRedemptionRate / 100)).toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
@@ -1002,23 +1053,23 @@ const Dashboard: React.FC = () => {
                   <div className="inline-flex w-24 h-24 bg-emerald-500 text-white rounded-full items-center justify-center mb-8 shadow-xl shadow-emerald-100">
                     <Check size={48} strokeWidth={4} />
                   </div>
-                  <h4 className="text-3xl font-black text-slate-800 mb-2 tracking-tight">委託申請已成功送出</h4>
+                  <h4 className="text-2xl font-black text-slate-800 mb-2 tracking-tight">委託申請已成功送出</h4>
                   <div className="bg-slate-50 px-6 py-4 rounded-2xl border border-slate-100 mb-10 inline-flex flex-col items-center gap-1">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">委託單號</span>
+                    <span className="text-xs font-black text-slate-400 uppercase tracking-widest">委託單號</span>
                     <span className="text-lg font-black text-slate-800 font-mono tracking-wider">{orderNo}</span>
                   </div>
                   
                   <div className="flex flex-col w-full gap-3 max-w-sm px-4">
                     <button 
                       onClick={() => { setShowSubModal(false); }}
-                      className="group flex items-center justify-center gap-2 w-full py-4 bg-white border-2 border-slate-200 text-slate-700 rounded-2xl font-black hover:bg-slate-50 transition-all hover:border-slate-300"
+                      className="group flex items-center justify-center gap-2 w-full py-4 bg-white border-2 border-slate-200 text-slate-700 rounded-2xl text-sm font-black hover:bg-slate-50 transition-all hover:border-slate-300"
                     >
                       <Search size={18} className="text-slate-400 group-hover:text-indigo-600 transition-colors" />
                       委託查詢 / 取消
                     </button>
                     <button 
                       onClick={() => setShowSubModal(false)} 
-                      className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black shadow-xl shadow-slate-200 hover:bg-black transition-all active:scale-[0.98]"
+                      className="w-full py-4 bg-slate-900 text-white rounded-2xl text-sm font-black shadow-xl shadow-slate-200 hover:bg-black transition-all active:scale-[0.98]"
                     >
                       回儀表板
                     </button>
@@ -1031,8 +1082,8 @@ const Dashboard: React.FC = () => {
                 <button disabled={subStep === 1} onClick={() => setSubStep(subStep - 1)} className="px-6 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-800 disabled:opacity-0 text-left">上一步</button>
                 <button 
                   onClick={() => subStep === 3 ? handleConfirmSubscription() : setSubStep(subStep + 1)} 
-                  disabled={(subStep === 1 && selectedFundIds.length !== 3) || (subStep === 2 && (subAmount < 200000 || subAmount > 5000000))} 
-                  className="flex items-center gap-2 bg-slate-900 text-white px-8 py-2.5 rounded-xl font-bold shadow-xl shadow-slate-200 hover:bg-black transition-all disabled:opacity-30"
+                  disabled={(subStep === 1 && !selectedGroupId) || (subStep === 2 && (subAmount < 200000 || subAmount > 5000000))} 
+                  className="flex items-center gap-2 bg-slate-900 text-white px-8 py-2.5 rounded-xl text-sm font-bold shadow-xl shadow-slate-200 hover:bg-black transition-all disabled:opacity-30"
                 >
                   {subStep === 3 ? '確認委託並送出' : '下一步'}
                   <ArrowRight size={18} />
