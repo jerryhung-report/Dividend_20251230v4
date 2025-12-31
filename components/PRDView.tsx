@@ -151,7 +151,7 @@ const PRDView: React.FC = () => {
                     </tr>
                     <tr>
                       <td className="px-8 py-6 font-black text-slate-800">贖回比例設定</td>
-                      <td className="px-8 py-6 font-bold text-slate-700">1% ~ 10% 整數調整。T日執行等比例贖回（依各標的權重比例扣除）。</td>
+                      <td className="px-8 py-6">1% ~ 10% 整數調整。T日執行等比例贖回（依各標的權重比例扣除）。</td>
                     </tr>
                     <tr>
                       <td className="px-8 py-6 font-black text-slate-800">指定執行日</td>
@@ -286,12 +286,12 @@ const PRDView: React.FC = () => {
             </div>
             <div className="space-y-4">
               <div className="p-6 border-2 border-slate-100 rounded-3xl">
-                <h4 className="text-lg font-black text-slate-800 mb-2 flex items-center gap-2">
-                  <ShieldCheck size={18} className="text-indigo-600" />
-                  機制演示：市場大跌導致風控觸發
+                <h4 className="text-lg font-black text-red-600 mb-2 flex items-center gap-2">
+                  <ShieldCheck size={18} />
+                  用戶看到按鈕轉為「醒目紅色」
                 </h4>
                 <p className="text-sm text-slate-500 font-bold leading-relaxed italic">
-                  用戶開啟 App 看到標題文字與按鈕轉為「醒目紅色」，系統跳出通知：「當日系統監測到市場波動已使組合淨值降至本金 78%，系統已自動執行『本金保護機制』暫停贖回。我們建議您暫時停止提領，直到市場回穩以保護剩餘單位數。」
+                  「當日系統監測到市場波動已使投資組合資產降至低於本金80%，系統自動執行『本金保護機制』暫停贖回。我們建議您開啓本金保護機制，直到投資組合資產回升至本金80%以上，系統自動恢復每月執行贖回。」
                 </p>
               </div>
             </div>

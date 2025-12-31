@@ -805,7 +805,7 @@ const Dashboard: React.FC = () => {
                              </div>
                              <div>
                                 <span className={`text-xs font-black uppercase tracking-widest block mb-0.5 ${isBelow80 || config.isManualPause ? 'text-red-500' : 'text-slate-400'}`}>
-                                  {config.isManualPause ? '已開啟暫停' : '自動運作中'}
+                                  {isBelow80 || config.isManualPause ? '已開啟暫停' : '自動運作中'}
                                 </span>
                                 <h4 className={`text-sm font-black tracking-tight ${isBelow80 || config.isManualPause ? 'text-red-800' : 'text-slate-700'}`}>本金保護機制</h4>
                              </div>
@@ -818,22 +818,20 @@ const Dashboard: React.FC = () => {
                                 setConfig(prev => ({ ...prev, isManualPause: nextPause }));
                                 setActivePortfolios(prev => prev.map(p => p.id === config.id ? { ...config, isManualPause: nextPause } : p));
                               }}
-                              className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none ${config.isManualPause ? 'bg-red-600 shadow-lg shadow-red-200' : 'bg-slate-300'}`}
+                              className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-300 ease-in-out focus:outline-none ${isBelow80 || config.isManualPause ? 'bg-red-600 shadow-lg shadow-red-200' : 'bg-slate-300'}`}
                             >
-                              <span className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-300 ease-in-out ${config.isManualPause ? 'translate-x-6' : 'translate-x-0'}`} />
+                              <span className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-300 ease-in-out ${isBelow80 || config.isManualPause ? 'translate-x-6' : 'translate-x-0'}`} />
                             </button>
-                            <span className={`text-xs font-black ${config.isManualPause ? 'text-red-600' : 'text-slate-400'}`}>
-                              {config.isManualPause ? '已開啟' : '已關閉'}
+                            <span className={`text-xs font-black ${isBelow80 || config.isManualPause ? 'text-red-600' : 'text-slate-400'}`}>
+                              {isBelow80 || config.isManualPause ? '已開啟' : '已關閉'}
                             </span>
                           </div>
                        </div>
                        
                        <div className={`p-4 rounded-2xl text-xs font-bold transition-all duration-500 ${isBelow80 || config.isManualPause ? 'bg-white/80 text-red-600 border border-red-100' : 'bg-white/50 text-slate-400 border border-slate-200/50'}`}>
-                          {isBelow80 
-                            ? "資產跌破 80% 本金保護位，建議暫停贖回以避免在低位變現損害長期複利。" 
-                            : config.isManualPause 
-                              ? "目前已開啟「手動暫停」。您的資產將停止每月提領，此舉有助於在市場動盪時保存單位數。"
-                              : "開啟後將停止所有自動贖回作業。使用者可自行評估市場趨勢，選擇暫時中斷現金流以保全資產。"}
+                          {isBelow80 || config.isManualPause 
+                            ? "當日系統監測到市場波動已使投資組合資產降至低於本金80%，系統自動執行『本金保護機制』暫停贖回。我們建議您開啓本金保護機制，直到投資組合資產回升至本金80%以上，系統自動恢復每月執行贖回。"
+                            : "開啟後將停止所有自動贖回作業。使用者可自行評估市場趨勢，選擇暫時中斷現金流以保全資產。"}
                        </div>
                     </div>
 
