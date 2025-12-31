@@ -3,7 +3,8 @@ import {
   FileText, Target, List, ShieldAlert, PieChart, Users, Zap, Database, 
   ArrowLeftRight, RefreshCcw, MonitorPlay, Layers, LayoutGrid, MousePointer2, 
   Info, Sparkles, CheckCircle2, Share2, ShieldCheck, Wallet, Landmark, 
-  Settings2, AlertCircle, Power, Calendar, TrendingUp, Bell, HardDrive
+  Settings2, AlertCircle, Power, Calendar, TrendingUp, Bell, HardDrive,
+  Download
 } from 'lucide-react';
 
 const PRDView: React.FC = () => {
@@ -11,11 +12,10 @@ const PRDView: React.FC = () => {
     { id: 'overview', title: '1. 產品背景與目標', icon: <Target size={18} /> },
     { id: 'users', title: '2. 目標用戶群體', icon: <Users size={18} /> },
     { id: 'functional', title: '3. 核心功能規格', icon: <List size={18} /> },
-    { id: 'safety', title: '4. 風控機制 (80% 規則)', icon: <ShieldAlert size={18} /> },
-    { id: 'portfolio', title: '5. 投資組合結構', icon: <PieChart size={18} /> },
+    { id: 'portfolio', title: '4. 投資組合結構', icon: <PieChart size={18} /> },
+    { id: 'scenarios', title: '5. 本金保護機制', icon: <ShieldCheck size={18} /> },
     { id: 'operations', title: '6. 股務作業規範', icon: <Database size={18} /> },
-    { id: 'ux', title: '7. UI/UX 設計規範', icon: <Zap size={18} /> },
-    { id: 'scenarios', title: '8. 本金保護機制', icon: <ShieldCheck size={18} /> }
+    { id: 'ux', title: '7. UI/UX 設計規範', icon: <Zap size={18} /> }
   ];
 
   const scrollToSection = (id: string) => {
@@ -26,6 +26,50 @@ const PRDView: React.FC = () => {
       const offsetPosition = elementPosition + window.pageYOffset - offset;
       window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
     }
+  };
+
+  const exportToWord = () => {
+    const prdElement = document.getElementById('prd-content-root');
+    if (!prdElement) return;
+
+    // Word XML / HTML Header
+    const header = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' 
+            xmlns:w='urn:schemas-microsoft-com:office:word' 
+            xmlns='http://www.w3.org/TR/REC-html40'>
+      <head>
+        <meta charset='utf-8'>
+        <title>配息製造機 PRD</title>
+        <style>
+          body { font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; line-height: 1.6; }
+          h1 { color: #1e293b; border-bottom: 2px solid #5B50F1; padding-bottom: 10px; }
+          h2 { color: #5B50F1; margin-top: 30px; border-bottom: 1px solid #e2e8f0; }
+          h4 { color: #334155; margin-bottom: 5px; }
+          table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+          th, td { border: 1px solid #cbd5e1; padding: 10px; text-align: left; }
+          th { background-color: #f8fafc; color: #64748b; font-weight: bold; }
+          .highlight { background-color: #fef2f2; border: 1px solid #fee2e2; padding: 15px; border-radius: 10px; }
+          .italic { font-style: italic; color: #64748b; }
+        </style>
+      </head>
+      <body>
+    `;
+    const footer = "</body></html>";
+    
+    // We grab the main content specifically to avoid UI artifacts
+    const content = prdElement.innerHTML;
+    const blob = new Blob(['\ufeff', header + content + footer], {
+      type: 'application/msword'
+    });
+    
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = '配息製造機_產品需求規格書_v1.9.doc';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -47,6 +91,22 @@ const PRDView: React.FC = () => {
             ))}
           </nav>
         </div>
+
+        <div className="mt-6 p-6 bg-slate-900 rounded-[24px] text-white shadow-xl relative overflow-hidden group">
+           <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform duration-500">
+             <Download size={80} />
+           </div>
+           <p className="text-xs font-black uppercase tracking-widest opacity-60 mb-1">Actions</p>
+           <h4 className="text-lg font-black mb-4">文檔管理</h4>
+           <button 
+            onClick={exportToWord}
+            className="w-full flex items-center justify-center gap-2 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition-all active:scale-95 shadow-lg shadow-indigo-500/20"
+           >
+             <Download size={18} />
+             匯出 Word 檔
+           </button>
+        </div>
+
         <div className="mt-6 p-6 bg-indigo-600 rounded-[24px] text-white shadow-xl shadow-indigo-100 relative overflow-hidden group">
            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform duration-500">
              <Settings2 size={80} />
@@ -81,7 +141,7 @@ const PRDView: React.FC = () => {
           </div>
         </div>
 
-        <div className="p-8 lg:p-14 space-y-20">
+        <div id="prd-content-root" className="p-8 lg:p-14 space-y-20">
           {/* Section 1: Overview */}
           <section id="overview" className="scroll-mt-24">
             <div className="flex items-center gap-4 mb-8">
@@ -159,7 +219,7 @@ const PRDView: React.FC = () => {
                     </tr>
                     <tr>
                       <td className="px-8 py-6 font-black text-slate-800">歷史明細紀錄</td>
-                      <td className="px-8 py-6">贖回紀錄永久保留至資料庫，包含每筆贖回時的淨值、領回金額及是否受風控暫停之標記。</td>
+                      <td className="px-8 py-6">贖回紀錄永久保留至資料庫，包含每筆贖回時的淨值、領回金額及是否受風控暫替之標記。</td>
                     </tr>
                   </tbody>
                 </table>
@@ -167,41 +227,14 @@ const PRDView: React.FC = () => {
             </div>
           </section>
 
-          {/* Section 4: Safety Mechanism */}
-          <section id="safety" className="scroll-mt-24">
-            <div className="flex items-center gap-4 mb-8">
-              <div className="w-12 h-12 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center font-black text-xl">04</div>
-              <h2 className="text-2xl font-black text-slate-800 tracking-tight">風控機制 (80% 規則)</h2>
-            </div>
-            <div className="p-8 bg-red-50/50 border border-red-100 rounded-[32px] shadow-sm space-y-6">
-              <div className="flex items-start gap-4">
-                 <ShieldAlert className="text-red-500 shrink-0 mt-1" size={24} />
-                 <div>
-                    <h4 className="text-lg font-black text-slate-800 mb-2">本金保護機制</h4>
-                    <p className="text-sm text-slate-600 leading-relaxed font-medium">
-                      當日系統監測到「當前計畫淨值」低於「原始申購總本金」的 80% 時，次一個執行日的自動贖回委託將 <strong>自動進入暫停狀態</strong>。
-                    </p>
-                 </div>
-              </div>
-              <div className="bg-white p-5 rounded-2xl border border-red-100">
-                <h5 className="text-xs font-black text-slate-400 mb-3 uppercase tracking-widest">復歸流程 (Re-activation)</h5>
-                <ol className="text-sm text-slate-600 space-y-2 list-decimal ml-4">
-                  <li>系統發送「資產水位過低」警示通知。</li>
-                  <li>當淨值回到 85% 以上，系統將通知用戶可手動解除鎖定。</li>
-                  <li>基於安全理由，<strong>系統不會自動恢復贖回</strong>，必須由用戶親自在 App 端點擊「恢復自動贖回」。</li>
-                </ol>
-              </div>
-            </div>
-          </section>
-
-          {/* Section 5: Portfolio */}
+          {/* Section 4: Portfolio */}
           <section id="portfolio" className="scroll-mt-24">
             <div className="flex items-center gap-4 mb-8">
-              <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center font-black text-xl">05</div>
+              <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center font-black text-xl">04</div>
               <h2 className="text-2xl font-black text-slate-800 tracking-tight">投資組合結構</h2>
             </div>
             <div className="space-y-6">
-              <p className="text-sm text-slate-600 font-medium italic">本產品限制固定配置3檔基金，依投資人指定的贖回比例，給予相對應的最佳配置比例。</p>
+              <p className="text-sm text-slate-600 font-medium italic">本產品提供5個投資組合，每組固定配置3檔基金，依投資人指定的贖回比例，給予相對應的最佳配置比例。</p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
                    <div className="text-indigo-600 font-black mb-1 text-sm">股票%</div>
@@ -215,6 +248,25 @@ const PRDView: React.FC = () => {
                    <div className="text-amber-600 font-black mb-1 text-sm">貴金屬%</div>
                    <div className="text-xs text-slate-400 font-bold uppercase">抗通膨避險</div>
                  </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Section 5: Main Protection Mechanism */}
+          <section id="scenarios" className="scroll-mt-24">
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center font-black text-xl">05</div>
+              <h2 className="text-2xl font-black text-slate-800 tracking-tight">本金保護機制</h2>
+            </div>
+            <div className="space-y-4">
+              <div className="p-6 border-2 border-slate-100 rounded-3xl highlight">
+                <h4 className="text-lg font-black text-red-600 mb-2 flex items-center gap-2">
+                  <ShieldCheck size={18} />
+                  用戶看到按鈕轉為「醒目紅色」
+                </h4>
+                <p className="text-sm text-slate-500 font-bold leading-relaxed italic">
+                  「當日系統監測到市場波動已使投資組合資產降至低於本金80%，系統自動執行『本金保護機制』暫停贖回。我們建議您開啓本金保護機制，直到投資組合資產回升至本金80%以上，系統自動恢復每月執行贖回。」
+                </p>
               </div>
             </div>
           </section>
@@ -252,7 +304,7 @@ const PRDView: React.FC = () => {
           </section>
 
           {/* Section 7: UX */}
-          <section id="ux" className="scroll-mt-24">
+          <section id="ux" className="scroll-mt-24 pb-20">
             <div className="flex items-center gap-4 mb-8">
               <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center font-black text-xl">07</div>
               <h2 className="text-2xl font-black text-slate-800 tracking-tight">UI/UX 設計規範</h2>
@@ -274,25 +326,6 @@ const PRDView: React.FC = () => {
               <div className="space-y-2">
                  <div className="text-xs font-black text-slate-400 uppercase tracking-widest">數據呈現</div>
                  <p className="text-xs text-slate-500 font-bold leading-relaxed">圖表採用 Recharts 繪製，強調「現金流累積曲線」。所有金額欄位必須進行千分位 (LocaleString) 格式化處理。</p>
-              </div>
-            </div>
-          </section>
-
-          {/* Section 8: Main Protection Mechanism */}
-          <section id="scenarios" className="scroll-mt-24 pb-20">
-            <div className="flex items-center gap-4 mb-8">
-              <div className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center font-black text-xl">08</div>
-              <h2 className="text-2xl font-black text-slate-800 tracking-tight">本金保護機制</h2>
-            </div>
-            <div className="space-y-4">
-              <div className="p-6 border-2 border-slate-100 rounded-3xl">
-                <h4 className="text-lg font-black text-red-600 mb-2 flex items-center gap-2">
-                  <ShieldCheck size={18} />
-                  用戶看到按鈕轉為「醒目紅色」
-                </h4>
-                <p className="text-sm text-slate-500 font-bold leading-relaxed italic">
-                  「當日系統監測到市場波動已使投資組合資產降至低於本金80%，系統自動執行『本金保護機制』暫停贖回。我們建議您開啓本金保護機制，直到投資組合資產回升至本金80%以上，系統自動恢復每月執行贖回。」
-                </p>
               </div>
             </div>
           </section>
